@@ -39,7 +39,7 @@ simulation = Simulation(model, Δt = Δt, stop_time = 10)
 # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 progress(s) =
-    @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, x-momentum: %.2e, ΔU: %.1f %%",
+    @info @sprintf("[%.2f%%], iteration: %d, time: %.3f"
                    100 * s.model.clock.time / s.stop_time,
                    s.model.clock.iteration,
                    s.model.clock.time)
