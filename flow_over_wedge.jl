@@ -1,9 +1,5 @@
-#pushfirst!(LOAD_PATH, joinpath("..", ".."))
-
 using Oceananigans
-using Oceananigans: fields
-using Oceananigans.Grids: on_architecture
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GridFittedBoundary, mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, mask_immersed_field!
 using Oceananigans.Architectures: device
 
 using KernelAbstractions: MultiEvent
@@ -12,7 +8,7 @@ using GLMakie
 
 arch = CPU()
 Nz = 64 # Resolution
-κ = 1e-2# Diffusivity and viscosity (Prandtl = 1)
+κ = 1e-2 # Diffusivity and viscosity (Prandtl = 1)
 U = 1
 
 underlying_grid = RectilinearGrid(arch,
@@ -36,45 +32,21 @@ model = NonhydrostaticModel(grid = grid,
 # Linear stratification
 set!(model, u = U)
 
-start_time = [time_ns()]
-
-function x_momentum(u)
-    mask_immersed_field!(u, NaN)
-    u_cpu = Array(interior(u))
-    fluid_u = filter(isfinite, u_cpu[:])
-    mask_immersed_field!(u)
-    return sum(fluid_u)
-end
-
 Δt = 5e-2 * (grid.Lx / grid.Nz) / U
 simulation = Simulation(model, Δt = Δt, stop_time = 10)
 
-wizard = TimeStepWizard(cfl=0.01, max_change=1.2, max_Δt=10*Δt)
+# wizard = TimeStepWizard(cfl=0.01, max_change=1.2, max_Δt=10*Δt)
+# simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1))
-
-
-u, v, w = model.velocities
-ΣUi = x_momentum(u)
-
-function progress(s)
-    # Calculate total momentum, and change in total momentum
-    ΣU = x_momentum(u)
-    ΔU = (ΣU - ΣUi) / ΣU
-
+progress(s) =
     @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, x-momentum: %.2e, ΔU: %.1f %%",
                    100 * s.model.clock.time / s.stop_time,
                    s.model.clock.iteration,
-                   s.model.clock.time,
-                   ΣU,
-                   ΔU * 100)
-
-    return nothing
-end
+                   s.model.clock.time)
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
-prefix = "flow_over_wedge_Nz$(Nz)_high_Re"
+prefix = "flow_over_wedge_Nz$(Nz)"
 simulation.output_writers[:fields] = JLD2OutputWriter(model, model.velocities,
                                                       schedule = TimeInterval(0.1),
                                                       prefix = prefix,
