@@ -39,7 +39,7 @@ simulation = Simulation(model, Δt = Δt, stop_time = 10)
 # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 progress(s) =
-    @info @sprintf("[%.2f%%], iteration: %d, time: %.3f"
+    @info @sprintf("[%.2f%%], iteration: %d, time: %.3f",
                    100 * s.model.clock.time / s.stop_time,
                    s.model.clock.iteration,
                    s.model.clock.time)
@@ -107,7 +107,7 @@ ax = Axis(fig[2, 1], title="z-velocity")
 hm = heatmap!(ax, wp, colorrange=(-max_w, max_w), colormap=:balance)
 cb = Colorbar(fig[2, 2], hm)
 
-title_gen(n) = @sprintf("Flow over wedge (Δ∫u = %.1f %%) at t = %.2f", 100 * (ΣUt[n] - ΣUi) / ΣUi, times[n])
+title_gen(n) = @sprintf("Flow over wedge at t = %.2f", times[n])
 title_str = @lift title_gen($n)
 ax_t = fig[0, :] = Label(fig, title_str)
 
