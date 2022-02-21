@@ -17,3 +17,4 @@ deps/src/
 docs/build/
 docs/site/
 
+*.jld2
