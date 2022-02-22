@@ -45,7 +45,7 @@ model = NonhydrostaticModel(; grid,
                             buoyancy = BuoyancyTracer(),
                             forcing  = (; b=b_forcing))
 
-b₀(x, z) = 0
+b₀(x, y, z) = 0
 set!(model, u = U, b = b₀)
 
 Δt = 5e-2 * (grid.Lx / grid.Nz) / U
