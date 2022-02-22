@@ -5,6 +5,7 @@ using Oceananigans.Architectures: device
 using KernelAbstractions: MultiEvent
 using Printf
 using GLMakie
+using SpecialFunctions
 
 arch = CPU()
 Nz = 64 # Resolution
@@ -43,9 +44,9 @@ model = NonhydrostaticModel(grid = grid,
                             coriolis = nothing,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
-                            forcing  = (b=b_forcing))
+                            forcing  = (;b=b_forcing))
 
-b₀(x, z) = 0
+b₀(x, y, z) = 0.0
 set!(model, u = U, b = b₀)
 
 Δt = 5e-2 * (grid.Lx / grid.Nz) / U
@@ -79,7 +80,7 @@ run!(simulation)
 filepath = prefix * ".jld2"
 ut = FieldTimeSeries(filepath, "u", grid=grid)
 wt = FieldTimeSeries(filepath, "w", grid=grid)
-wt = FieldTimeSeries(filepath, "b", grid=grid)
+bt = FieldTimeSeries(filepath, "b", grid=grid)
 
 times = ut.times
 Nt = length(times)
