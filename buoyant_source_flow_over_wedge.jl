@@ -5,6 +5,7 @@ using Oceananigans.Architectures: device
 using KernelAbstractions: MultiEvent
 using Printf
 using GLMakie
+using SpecialFunctions
 
 arch = CPU()
 Nz = 64 # Resolution
@@ -22,28 +23,27 @@ const slope = 1/2
 @inline wedge(x, y) = slope * min(x, -x) + 1
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(wedge))
 
+@inline function buoyancy_source(x, z, p)
+    d = sqrt((x - p.x₀)^2 + (z - p.z₀)^2)
+    R = p.R
+    δᴸ = p.δᴸ
+    return - 0.5 * (1 - erf((d - R) / δᴸ))
+end
 
-@inline distance_to_source(x, z,x₀,z₀) = sqrt((x - x₀)^2 + (z - z₀)^2)
+@inline discrete_buoyancy_source(i, j, k, grid, clock, model_fields, parameters) =
+    buoyancy_source(xnode(Center, i, grid), znode(Center, k, grid), parameters)
 
-@inline b_forcing_func(x, z, p) =
-    - 0.5 * (1 - erf((distance_to_source(x, z, p.x₀, p.z₀) - p.R) / p.δᴸ))
+b_forcing = Forcing(discrete_buoyancy_source,
+                    discrete_form = true,
+                    parameters = (x₀=0.0, z₀=1.5, δᴸ=0.05, R=0.5))
 
-@inline b_discrete_forcing_func(i, j, k, grid, clock, model_fields, parameters) =
-    @inbounds b_forcing_func(grid.xᶜᵃᵃ[i], grid.zᵃᵃᶜ[k], parameters)
-
-b_forcing = Forcing(b_discrete_forcing_func, discrete_form=true,
-                    parameters=(x₀=0.0, z₀=1.5, δᴸ=0.05, R=0.5))
-
-
-
-
-model = NonhydrostaticModel(grid = grid,
+model = NonhydrostaticModel(; grid,
                             advection = WENO5(),
                             closure = IsotropicDiffusivity(ν=κ, κ=κ),
                             coriolis = nothing,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),
-                            forcing  = (b=b_forcing))
+                            forcing  = (; b=b_forcing))
 
 b₀(x, z) = 0
 set!(model, u = U, b = b₀)
