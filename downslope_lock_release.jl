@@ -8,50 +8,40 @@ using GLMakie
 using SpecialFunctions
 
 arch = CPU()
-Nz = 64 # Resolution
+Nx = 512
+Nz = 128 # Resolution
 κ = 1e-3 # Diffusivity and viscosity (Prandtl = 1)
-U = 0.2
 
 underlying_grid = RectilinearGrid(arch,
-                                  size = (2Nz, Nz),
-                                  x = (-4, 4),
-                                  z = (0, 4),
+                                  size = (Nx, Nz),
+                                  x = (0, 5),
+                                  z = (0, 1),
                                   halo = (3, 3),
-                                  topology = (Periodic, Flat, Bounded))
+                                  topology = (Bounded, Flat, Bounded))
 
-const slope = 1/2
-@inline wedge(x, y) = slope * min(x, -x) + 1
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(wedge))
+const slope = 0.3
+@inline bottom_topography(x, y) =  max.(min.(1.0 .- slope * x,0.7),0)
 
-@inline function buoyancy_source(x, z, p)
-    d = sqrt((x - p.x₀)^2 + (z - p.z₀)^2)
-    R = p.R
-    δᴸ = p.δᴸ
-    return - 0.5 * (1 - erf((d - R) / δᴸ))
-end
 
-@inline discrete_buoyancy_source(i, j, k, grid, clock, model_fields, parameters) =
-    buoyancy_source(xnode(Center(), i, grid), znode(Center(), k, grid), parameters)
 
-b_forcing = Forcing(discrete_buoyancy_source,
-                    discrete_form = true,
-                    parameters = (x₀=0.0, z₀=1.5, δᴸ=0.05, R=0.5))
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_topography))
 
-model = NonhydrostaticModel(; grid,
+
+
+model = NonhydrostaticModel( grid = grid,
                             advection = WENO5(),
                             closure = IsotropicDiffusivity(ν=κ, κ=κ),
                             coriolis = nothing,
                             tracers = :b,
-                            buoyancy = BuoyancyTracer(),
-                            forcing  = (; b=b_forcing))
+                            buoyancy = BuoyancyTracer())
 
-b₀(x, y, z) = 0.0
-set!(model, u = U, b = b₀)
+b₀(x, y, z) = -float(x.<1)
+set!(model, u = 0.0, b = b₀)
 
-Δt = 5e-2 * (grid.Lx / grid.Nz) / U
+Δt = 5e-2
 simulation = Simulation(model, Δt = Δt, stop_time = 20)
 
- wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10*Δt)
+ wizard = TimeStepWizard(cfl=0.5, max_change=1.1, max_Δt=100*Δt)
  simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 progress(s) =
@@ -62,7 +52,7 @@ progress(s) =
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
-prefix = "flow_over_wedge_Nz$(Nz)"
+prefix = "downslope_lock_release"
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                       schedule = TimeInterval(0.1),
                                                       prefix = prefix,
@@ -100,7 +90,6 @@ wait(device(CPU()), MultiEvent(Tuple(eventss)))
 max_u = 2.0
 min_u = 0.5
 max_w = 1.0
-max_b = -1.0
 
 n = Observable(1)
 
@@ -128,7 +117,7 @@ hm = heatmap!(ax, wp, colorrange=(-max_w, max_w), colormap=:balance)
 cb = Colorbar(fig[2, 2], hm)
 
 ax = Axis(fig[3, 1], title="buoyancy")
-hm = heatmap!(ax, bp, colorrange=(-3.5, 0), colormap=:balance)
+hm = heatmap!(ax, bp, colorrange=(-1,0), colormap=:balance)
 cb = Colorbar(fig[3, 2], hm)
 
 title_gen(n) = @sprintf("Flow over wedge at t = %.2f", times[n])
