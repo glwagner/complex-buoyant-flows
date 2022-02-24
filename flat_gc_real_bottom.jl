@@ -8,27 +8,22 @@ using GLMakie
 using SpecialFunctions
 
 arch = CPU()
-Nx = 512
-Nz = 128 # Resolution
+Nx = 256
+Nz = 64 # Resolution
 κ = 1e-4 # Diffusivity and viscosity (Prandtl = 1)
 
-underlying_grid = RectilinearGrid(arch,
+grid = RectilinearGrid(arch,
                                   size = (Nx, Nz),
                                   x = (0, 5),
                                   z = (0, 1),
                                   halo = (3, 3),
                                   topology = (Bounded, Flat, Bounded))
 
-const slope = 0.2
-@inline bottom_topography(x, y) =  max.(min.(0.8 .- slope * x,0.6),0)
 
 
 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_topography))
 
-
-
-model = NonhydrostaticModel( grid = grid,
+model = NonhydrostaticModel(grid = grid,
                             advection = WENO5(),
                             closure = IsotropicDiffusivity(ν=κ, κ=κ),
                             coriolis = nothing,
@@ -52,7 +47,7 @@ progress(s) =
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
-prefix = "downslope_lock_release"
+prefix = "flat_gc_real_bottom"
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                       schedule = TimeInterval(0.1),
                                                       prefix = prefix,
@@ -76,6 +71,8 @@ Nt = length(times)
 ut = [ut[n] for n = 1:Nt]
 wt = [wt[n] for n = 1:Nt]
 bt = [bt[n] for n = 1:Nt]
+
+sumbt = [sum(bt[n]) for n=1:Nt]
 
 # Preprocess
 eventss = []
@@ -135,4 +132,6 @@ display(fig)
 ax = Axis(f[1, 1], xlabel = "time", ylabel = "% change",
     title = "Title")
  lines!(ax,times,100*(sumbt.-sumbt[1])./sumbt[1])
- save("perc_mass_change.pdf",f)
+ display(fig)
+
+ #save(prefix * "_mass_change.pdf",f)
