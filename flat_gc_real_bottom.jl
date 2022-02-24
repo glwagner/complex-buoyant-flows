@@ -10,7 +10,7 @@ using SpecialFunctions
 arch = CPU()
 Nx = 256
 Nz = 64 # Resolution
-κ = 1e-4 # Diffusivity and viscosity (Prandtl = 1)
+κ = 1e-3 # Diffusivity and viscosity (Prandtl = 1)
 
 grid = RectilinearGrid(arch,
                                   size = (Nx, Nz),
@@ -102,6 +102,13 @@ up = @lift ui($n)
 wp = @lift wi($n)
 bp = @lift bi($n)
 
+f = Figure(resolution = (1000,1000))
+
+ax = Axis(f[1, 1], xlabel = "time", ylabel = "% change",
+   title = "Title")
+lines!(ax,times,100*(sumbt.-sumbt[1])./sumbt[1])
+display(f)
+
 fig = Figure(resolution=(1800, 1800))
 
 ax = Axis(fig[1, 1], title="x-velocity")
@@ -127,11 +134,5 @@ end
 
 display(fig)
 
- f = Figure(resolution = (1000,1000))
-
-ax = Axis(f[1, 1], xlabel = "time", ylabel = "% change",
-    title = "Title")
- lines!(ax,times,100*(sumbt.-sumbt[1])./sumbt[1])
- display(fig)
 
  #save(prefix * "_mass_change.pdf",f)
