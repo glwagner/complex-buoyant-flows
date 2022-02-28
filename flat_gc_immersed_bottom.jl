@@ -8,9 +8,9 @@ using GLMakie
 using SpecialFunctions
 
 arch = CPU()
-Nx = 256
-Nz = 64 # Resolution
-κ = 0.5e-3 # Diffusivity and viscosity (Prandtl = 1)
+Nx = 512
+Nz = 128 # Resolution
+κ = 1e-3 # Diffusivity and viscosity (Prandtl = 1)
 
 underlying_grid = RectilinearGrid(arch,
                                   size = (Nx, Nz),
@@ -51,7 +51,7 @@ progress(s) =
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
-prefix = @sprintf("flat_gc_immersed_Re%d",1/κ)
+prefix ="flat_gc_immersed_highres" #@sprintf("flat_gc_immersed_Re%d",1/κ)
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                       schedule = TimeInterval(0.1),
                                                       prefix = prefix,

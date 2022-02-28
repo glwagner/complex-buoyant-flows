@@ -10,7 +10,7 @@ using SpecialFunctions
 
 arch = CPU()
 
-prefixes = ["flat_gc_real_bottom","flat_gc_immersed_bottom","flat_gc_immersed_Re2000"]
+prefixes = ["flat_gc_real_bottom","flat_gc_immersed_Re1000","flat_gc_immersed_Re2000","flat_gc_immersed_Re4000","flat_gc_immersed_highres"]
 
 f = Figure(resolution = (1000,1000))
 
@@ -63,7 +63,8 @@ wp = @lift wi($n)
 bp = @lift bi($n)
 
 lines!(ax,times,100*(sumbt.-sumbt[1])./sumbt[1],label=nmes)
-display(f)
 end
 axislegend()
+display(f)
+
 save("compare_leakage.png",f)
