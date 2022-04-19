@@ -3,28 +3,28 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, m
 using Oceananigans.Architectures: device
 using Oceananigans.Grids: xnode, znode
 using KernelAbstractions: MultiEvent
+using JLD2
 using Printf
 using GLMakie
 using SpecialFunctions
 
 arch = CPU()
-Nx = 256
-Nz = 64 # Resolution
-Ny = 64
-κ = 1e-3 # Diffusivity and viscosity (Prandtl = 1)
+Nx = 512
+Nz = 128 # Resolution
+#Ny = 64
+κ = 1e-4 # Diffusivity and viscosity (Prandtl = 1)
 
 underlying_grid = RectilinearGrid(arch,
-                                  size = (Nx, Ny, Nz),
+                                  size = (Nx, Nz),
                                   x = (0, 5),
-                                  y = (-0.5, 0.5),
                                   z = (0.0, 1.0),
-                                  halo = (3, 3, 3),
-                                  topology = (Bounded, Bounded, Bounded))
+                                  halo = (3, 3),
+                                  topology = (Bounded, Flat, Bounded))
 
 const gamx = 2.0
 const gamy = 20.0
 
-@inline bottom_topography(x, y) =  0.5*exp.(-gamx*(x.-2.5).^2)*exp.(-gamy*y.^2)
+@inline bottom_topography(x,y) =  0.25*exp.(-gamx*(x.-2.5).^2);#*exp.(-gamy*y.^2)
 
 
 
@@ -34,18 +34,18 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_topography)
 
 model = NonhydrostaticModel(grid = grid,
                             advection = WENO5(),
-                            closure = IsotropicDiffusivity(ν=κ, κ=κ),
+                            closure = ScalarDiffusivity(ν=κ, κ=κ),
                             coriolis = nothing,
                             tracers = :b,
                             buoyancy = BuoyancyTracer())
 
-b₀(x, y, z) =0.5*(erf.((x.-1.0)*10).-1.0)
+b₀(x,y, z) =0.5*(erf.((x.-1.0)*10).-1.0)
 set!(model, u = 0.0, b = b₀)
 
 Δt = 5e-4
 simulation = Simulation(model, Δt = Δt, stop_time = 20)
 
- wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=100*Δt)
+ wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=.1)
  simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 progress(s) =
@@ -56,19 +56,17 @@ progress(s) =
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
-prefix ="immersed_bump_lock_release" #@sprintf("flat_gc_immersed_Re%d",1/κ)
-simulation.output_writers[:velocities] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
+prefix ="immersed_bump_lock_release.jld2" #@sprintf("flat_gc_immersed_Re%d",1/κ)
+simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities,model.tracers),
                                                       schedule = TimeInterval(0.1),
-                                                      prefix = prefix,
-                                                      field_slicer = nothing,
-                                                      force = true)
+                                                      filename = prefix)
 run!(simulation)
 
 @info """
     Simulation complete.
     Runtime: $(prettytime(simulation.run_wall_time))
 """
-
+#=
 filepath = prefix * ".jld2"
 ut = FieldTimeSeries(filepath, "u", grid=grid)
 wt = FieldTimeSeries(filepath, "w", grid=grid)
@@ -142,3 +140,4 @@ ax = Axis(f[1, 1], xlabel = "time", ylabel = "% change",
  display(f)
 
  save(prefix * "_mass_change.png",f)
+=#
