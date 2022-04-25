@@ -6,26 +6,26 @@ using Oceananigans.Grids: xnode, znode
 using KernelAbstractions: MultiEvent
 using JLD2
 using Printf
-using GLMakie
+#using GLMakie
 using SpecialFunctions
 
 arch = CPU()
 Nx = 256
 Nz = 64 # Resolution
 #Ny = 64
-κ = 1e-3 # Diffusivity and viscosity (Prandtl = 1)
+κ = 1e-6 # Diffusivity and viscosity (Prandtl = 1)
 
 underlying_grid = RectilinearGrid(arch,
                                   size = (Nx, Nz),
                                   x = (0, 5),
-                                  z = (0.0, 1.0),
+                                  z = (-0.05, 1.0),
                                   halo = (3, 3),
                                   topology = (Bounded, Flat, Bounded))
 
 const gamx = 2.0
 const gamy = 20.0
 
-@inline bottom_topography(x,y) =  0.25*exp.(-gamx*(x.-2.5).^2);#*exp.(-gamy*y.^2)
+@inline bottom_topography(x,y) =  0.0;#*exp.(-gamy*y.^2)
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_topography))
 
 
@@ -38,7 +38,7 @@ boundary_conditions = (; u = u_bcs, w = w_bcs)
 model = NonhydrostaticModel(grid = grid,
                             advection = WENO5(),
                             boundary_conditions = boundary_conditions,
-                            closure = IsotropicDiffusivity(ν=κ, κ=κ),
+                            closure =  ScalarDiffusivity(ν=κ,κ=κ),
                             coriolis = nothing,
                             tracers = :b,
                             buoyancy = BuoyancyTracer())
@@ -60,11 +60,11 @@ progress(s) =
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
-prefix ="immersed_bump_lock_release.jld2" #@sprintf("flat_gc_immersed_Re%d",1/κ)
+prefix ="immersed_flat_lock_release" #@sprintf("flat_gc_immersed_Re%d",1/κ)
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities,model.tracers),
                                                       schedule = TimeInterval(0.1),
-                                                      force =true,
-                                                      prefix = prefix)
+                                                      overwrite_existing=true,
+                                                      filename = prefix)
 run!(simulation)
 
 @info """

@@ -15,8 +15,9 @@ using JLD2
 arch = CPU()
 
 prefixes = pwd();
+nme = "immersed_flat_lock_release";
 
-filepath = prefixes * "/immersed_bump_lock_release.jld2";
+filepath = prefixes * "/" * nme *".jld2";
 
 
 bt = FieldTimeSeries(filepath, "b", grid=nothing);
@@ -56,7 +57,7 @@ title_gen(n) = @sprintf("lock release at t = %.2f", times[n])
 title_str = @lift title_gen($n)
 #ax_t = figure[0, :] = Label(figure, title_str)
 
-record(figure, prefixes * ".mp4", 1:Nt, framerate=8) do nt
+record(figure, nme * ".mp4", 1:Nt, framerate=8) do nt
     n[] = nt
 end
 
