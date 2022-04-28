@@ -9,7 +9,7 @@ using Printf
 #using GLMakie
 using SpecialFunctions
 
-arch = CPU()
+arch = GPU()
 Nx = 256
 Nz = 64 # Resolution
 #Ny = 64
@@ -22,8 +22,8 @@ underlying_grid = RectilinearGrid(arch,
                                   halo = (3, 3),
                                   topology = (Bounded, Flat, Bounded))
 
-const gamx = 2.0
-const gamy = 20.0
+#const gamx = 2.0
+#const gamy = 20.0
 
 @inline bottom_topography(x,y) =  0.0;#*exp.(-gamy*y.^2)
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_topography))
