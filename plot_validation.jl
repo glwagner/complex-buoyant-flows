@@ -8,14 +8,14 @@ using GLMakie
 using SpecialFunctions
 using Statistics
 using Interpolations
-using ElectronDisplay
+#using ElectronDisplay
 using Statistics
 using JLD2
 
 arch = CPU()
 
 prefixes = pwd();
-nme = "immersed_flat_lock_release";
+nme = "gc_exp";
 
 filepath = prefixes * "/" * nme *".jld2";
 
@@ -35,7 +35,7 @@ bt = [bt[n] for n = 1:Nt];
 
 
 n = Observable(1)
-bi(n) = interior(bt[n])[:,1, :]
+bi(n) = interior(bt[n])[:,16, :]
 bp = @lift bi($n)
 
 mass = [sum(interior(bt[k])[:,1, :]) for k = 1:Nt];

@@ -9,18 +9,19 @@ using Printf
 #using GLMakie
 using SpecialFunctions
 
-arch = GPU()
-Nx = 256
-Nz = 64 # Resolution
-#Ny = 64
-κ = 1e-6 # Diffusivity and viscosity (Prandtl = 1)
-
+arch = CPU()
+Nx = 1024
+Nz = 128 # Resolution
+Ny = 32
+κ = 1.0/80000.0 # Diffusivity and viscosity (Prandtl = 1)
+xlock = 0.5
 underlying_grid = RectilinearGrid(arch,
-                                  size = (Nx, Nz),
-                                  x = (0, 5),
+                                  size = (Nx, Ny, Nz),
+                                  x = (0, 12.5),
+				  y = (0,0.25),
                                   z = (0.0, 1.0),
-                                  halo = (3, 3),
-                                  topology = (Bounded, Flat, Bounded))
+                                  halo = (3, 3, 3),
+                                  topology = (Bounded, Bounded, Bounded))
 
 const gamx = 2.0
 const gamy = 20.0
@@ -29,7 +30,7 @@ const gamy = 20.0
 #grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_topography))
 
 grid = underlying_grid
-no_slip = ValueBoundaryCondition(0)
+#no_slip = ValueBoundaryCondition(0)
 #u_bcs = FieldBoundaryConditions(bottom=no_slip, immersed=no_slip)
 #w_bcs = FieldBoundaryConditions(immersed=no_slip)
 #u_bcs = FieldBoundaryConditions(bottom=no_slip)
@@ -45,13 +46,14 @@ model = NonhydrostaticModel(grid = grid,
                             tracers = :b,
                             buoyancy = BuoyancyTracer())
 
-b₀(x,y, z) =0.5*(erf.((x.-1.0)*10).-1.0)
-set!(model, u = 0.0, b = b₀)
+b₀(x,y, z) = 0.5*(erf((x-xlock)*20)-1.0)
+u₀(x,y,z) = 1e-4.*(rand(Float64,1).-0.5)[1]
+set!(model, u = u₀, b = b₀)
 
 Δt = 5e-4
-simulation = Simulation(model, Δt = Δt, stop_time = 20)
+simulation = Simulation(model, Δt = Δt, stop_time = 30)
 
- wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=.1)
+ wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=0.1)
  simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 progress(s) =
@@ -62,7 +64,7 @@ progress(s) =
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
-prefix ="real_flat_lock_release" #@sprintf("flat_gc_immersed_Re%d",1/κ)
+prefix ="gc_exp" #@sprintf("flat_gc_immersed_Re%d",1/κ)
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities,model.tracers),
                                                       schedule = TimeInterval(0.1),
                                                       overwrite_existing=true,
